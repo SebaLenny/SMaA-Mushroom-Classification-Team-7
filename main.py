@@ -33,19 +33,36 @@ def show_property_analysis(df):
         print('\tValues frequencies:\t', end='')
         print('[', end='')
         for key in unique_sorted:
-            print(key + ': ' + str(value_frequency[key]) + ',\t', end='')
+            print(str(key) + ': ' + str(value_frequency[key]) + ',\t', end='')
         print(']')
         print('\tValues percentages:\t', end='')
         print('[', end='')
         for key in unique_sorted:
-            print(key + ': ' + "%.2f" % value_percentage[key] + '%,\t', end='')
+            print(str(key) + ': ' + "%.2f" % value_percentage[key] + '%,\t', end='')
         print(']', end='')
         print('')
 
 
+def prepare_factorized_df(df):
+    fact_df = df.copy()
+    for column in df.columns:
+        fact_df[column] = pd.factorize(mushrooms_df[column])[0]
+    return fact_df
+
+
+def prepare_one_hot_df(df):
+    one_hot = pd.get_dummies(df)
+    one_hot = one_hot.rename(columns={'class_e': 'class'})
+    one_hot = one_hot.drop(columns=['class_p'])
+    return one_hot
+
+
 if __name__ == "__main__":
     mushrooms_df = load_data_pandas()
-    print("\n\n--Information about the dataset:\n")
-    print(mushrooms_df.info())
-    print("\n\n--Values of labels:\n")
-    show_property_analysis(mushrooms_df)
+    # show_property_analysis(mushrooms_df) # data is for the most part defect free
+
+    factorized_df = prepare_factorized_df(mushrooms_df)
+    # show_property_analysis(factorized_df)
+
+    one_hot_df = prepare_one_hot_df(mushrooms_df)
+    # show_property_analysis(one_hot_df)
