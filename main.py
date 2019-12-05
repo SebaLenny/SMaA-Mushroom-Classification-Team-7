@@ -57,12 +57,21 @@ def prepare_one_hot_df(df):
     return one_hot
 
 
+def train_test_split(df, split=.8):
+    train = df.sample(frac=split)
+    test = df.drop(train.index)
+    return train, test
+
+
 if __name__ == "__main__":
     mushrooms_df = load_data_pandas()
+    mush_train, mush_test = train_test_split(mushrooms_df)
     # show_property_analysis(mushrooms_df) # data is for the most part defect free
 
     factorized_df = prepare_factorized_df(mushrooms_df)
+    fact_train, fact_test = train_test_split(factorized_df)
     # show_property_analysis(factorized_df)
 
     one_hot_df = prepare_one_hot_df(mushrooms_df)
+    oh_train, oh_test = train_test_split(one_hot_df)
     # show_property_analysis(one_hot_df)
