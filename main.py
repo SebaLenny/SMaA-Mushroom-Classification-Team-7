@@ -1,5 +1,10 @@
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn import neighbors
+from sklearn.metrics import f1_score
+from sklearn import tree
+from datetime import datetime
 
 data_path = 'Data/mushrooms.csv'
 
@@ -63,6 +68,33 @@ def train_test_split(df, split=.8):
     return train, test
 
 
+def knn_stats(training_data, test_data, k_n=51):
+    train_labels, train_classes = training_data.values[:, 1:], training_data.values[:, 0]
+    test_labels, test_classes = test_data.values[:, 1:], test_data.values[:, 0]
+    ks, f1s = [], []
+    time_start = datetime.now()
+    for k in range(1, k_n):
+        classifier = neighbors.KNeighborsClassifier(n_neighbors=k)
+        classifier.fit(train_labels, train_classes)
+        prediction = classifier.predict(test_labels)
+        f1 = f1_score(test_classes, prediction)
+        ks.append(k)
+        f1s.append(f1)
+    time_end = datetime.now()
+    return ks, f1s, time_end - time_start
+
+
+def present_knn(k, a_score, b_score, a_label='', b_label='', x_label='', y_label=''):
+    plt.plot(k, a_score, label=a_label)
+    plt.plot(k, b_score, label=b_label)
+    plt.legend(loc='upper right')
+    plt.xticks(k[::4])
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    plt.grid()
+    plt.show()
+
+
 if __name__ == "__main__":
     mushrooms_df = load_data_pandas()
     mush_train, mush_test = train_test_split(mushrooms_df)
@@ -75,3 +107,9 @@ if __name__ == "__main__":
     one_hot_df = prepare_one_hot_df(mushrooms_df)
     oh_train, oh_test = train_test_split(one_hot_df)
     # show_property_analysis(one_hot_df)
+
+    knn_k, knn_f1_normal, fact_delta = knn_stats(fact_train, fact_test)
+    _, knn_f1_one_hot, oh_delta = knn_stats(oh_train, oh_test)
+
+    present_knn(knn_k, knn_f1_normal, knn_f1_one_hot, a_label='Factorized data', b_label='One hot data', x_label='K',
+                y_label='F1 score')
