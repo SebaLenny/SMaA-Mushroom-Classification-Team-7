@@ -5,6 +5,7 @@ from sklearn import neighbors
 from sklearn.metrics import f1_score
 from sklearn import tree
 from datetime import datetime
+import graphviz
 
 data_path = 'Data/mushrooms.csv'
 
@@ -26,7 +27,8 @@ def show_property_analysis(df):
         unique_values = df[column].unique()
         unique_values_count = len(unique_values)
         value_frequency = df[column].value_counts()
-        unique_sorted = value_frequency[np.argsort(value_frequency)[::-1]].index.tolist()
+        unique_sorted = value_frequency[np.argsort(
+            value_frequency)[::-1]].index.tolist()
         value_percentage = value_frequency * 100 / len(df[column])
 
         print('')
@@ -43,7 +45,8 @@ def show_property_analysis(df):
         print('\tValues percentages:\t', end='')
         print('[', end='')
         for key in unique_sorted:
-            print(str(key) + ': ' + "%.2f" % value_percentage[key] + '%,\t', end='')
+            print(str(key) + ': ' +
+                  "%.2f" % value_percentage[key] + '%,\t', end='')
         print(']', end='')
         print('')
 
@@ -74,7 +77,7 @@ def knn_stats(training_data, test_data, k_n=51):
     ks, f1s = [], []
     time_start = datetime.now()
     for k in range(1, k_n):
-        classifier = neighbors.KNeighborsClassifier(n_neighbors=k)
+        classifier = neighbors.KNeighborsClassifier(n_neighbors=k, p=1)
         classifier.fit(train_labels, train_classes)
         prediction = classifier.predict(test_labels)
         f1 = f1_score(test_classes, prediction)
@@ -84,15 +87,66 @@ def knn_stats(training_data, test_data, k_n=51):
     return ks, f1s, time_end - time_start
 
 
+def knn_stats_p(training_data, test_data, p_steps=20, k=20):
+    train_labels, train_classes = training_data.values[:, 1:], training_data.values[:, 0]
+    test_labels, test_classes = test_data.values[:, 1:], test_data.values[:, 0]
+    ps, f1s = [], []
+    time_start = datetime.now()
+    for p in np.linspace(1, 2, p_steps):
+        classifier = neighbors.KNeighborsClassifier(n_neighbors=k, p=p)
+        classifier.fit(train_labels, train_classes)
+        prediction = classifier.predict(test_labels)
+        f1 = f1_score(test_classes, prediction)
+        ps.append(p)
+        f1s.append(f1)
+    time_end = datetime.now()
+    return ps, f1s, time_end - time_start
+
+
 def present_knn(k, a_score, b_score, a_label='', b_label='', x_label='', y_label=''):
     plt.plot(k, a_score, label=a_label)
     plt.plot(k, b_score, label=b_label)
-    plt.legend(loc='upper right')
+    plt.legend()
     plt.xticks(k[::4])
     plt.xlabel(x_label)
     plt.ylabel(y_label)
     plt.grid()
     plt.show()
+
+
+def tree_stats(training_data, test_data, train_size=-1, criterion='entropy', out_file=False):
+    train_labels, train_classes = training_data.values[:train_size, 1:], training_data.values[:train_size, 0]
+    test_labels, test_classes = test_data.values[:, 1:], test_data.values[:, 0]
+    classifier = tree.DecisionTreeClassifier(criterion=criterion)
+    classifier = classifier.fit(train_labels, train_classes)
+    if out_file:
+        tree_data = tree.export_graphviz(classifier,
+                                         feature_names=training_data.columns[1:],
+                                         class_names=['Poisonous', 'Edible'],
+                                         rounded=True,
+                                         )
+        graph = graphviz.Source(tree_data)
+        graph.render()
+    prediction = classifier.predict(test_labels)
+    return f1_score(test_classes, prediction)
+
+
+def analyse_tree_training_size(train, test, criterion):
+    f1s = []
+    indx = []
+    for i in range(5, 100):
+        f1s.append(tree_stats(train, test, i, criterion))
+        indx.append(i)
+    for i in range(100, 500, 5):
+        f1s.append(tree_stats(train, test, i, criterion))
+        indx.append(i)
+    for i in range(500, 2000, 15):
+        f1s.append(tree_stats(train, test, i, criterion))
+        indx.append(i)
+    for i in range(2000, 6000, 100):
+        f1s.append(tree_stats(train, test, i, criterion))
+        indx.append(i)
+    return indx, f1s
 
 
 if __name__ == "__main__":
@@ -108,8 +162,25 @@ if __name__ == "__main__":
     oh_train, oh_test = train_test_split(one_hot_df)
     # show_property_analysis(one_hot_df)
 
+    # KNN
     knn_k, knn_f1_normal, fact_delta = knn_stats(fact_train, fact_test)
+    print(fact_delta)
     _, knn_f1_one_hot, oh_delta = knn_stats(oh_train, oh_test)
-
+    print(oh_delta)
     present_knn(knn_k, knn_f1_normal, knn_f1_one_hot, a_label='Factorized data', b_label='One hot data', x_label='K',
                 y_label='F1 score')
+
+    # KNN - P
+    p_ss, p_f1, p_deltas = knn_stats_p(fact_train, fact_test)
+    plt.plot(p_ss, p_f1)
+    plt.xlabel('P value')
+    plt.ylabel('F1 score')
+    plt.show()
+
+    # DC
+    indx, f1s = analyse_tree_training_size(oh_train, oh_test, 'entropy')
+    plt.plot(indx, f1s)
+    indx, f1s = analyse_tree_training_size(oh_train, oh_test, 'gini')
+    plt.plot(indx, f1s)
+    plt.show()
+    tree_stats(oh_train, oh_test, out_file=True)
